@@ -24,25 +24,25 @@ CREATE TABLE product (
 );
 
 CREATE TABLE hdd (
-    product_id          SERIAL PRIMARY KEY, 
-    capacity            DECIMAL(5, 2),          
-    rotational_speed    INT,  
-    wattage             INT,           
-    depth               DECIMAL(5, 2), 
-    height              DECIMAL(5, 2),    
-    width               DECIMAL(5, 2),
+    product_id         SERIAL PRIMARY KEY, 
+    capacity           DECIMAL(5, 2),          
+    rotational_speed   INT,  
+    wattage            INT,           
+    depth              DECIMAL(5, 2), 
+    height             DECIMAL(5, 2),    
+    width              DECIMAL(5, 2),
     FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE gpu (
-    product_id  SERIAL PRIMARY KEY, 
-    ram_size    INT,         
-    clock_speed DECIMAL(5, 2), 
-    num_fans    SMALLINT,
-    wattage     INT,
-    depth       DECIMAL(5, 2), 
-    height      DECIMAL(5, 2),    
-    width       DECIMAL(5, 2),
+    product_id   SERIAL PRIMARY KEY, 
+    ram_size     INT,         
+    clock_speed  DECIMAL(5, 2), 
+    num_fans     SMALLINT,
+    wattage      INT,
+    depth        DECIMAL(5, 2), 
+    height       DECIMAL(5, 2),    
+    width        DECIMAL(5, 2),
     FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 

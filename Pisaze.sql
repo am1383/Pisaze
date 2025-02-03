@@ -358,7 +358,7 @@ BEGIN
 
     IF stock_count < NEW.quantity THEN
         RAISE EXCEPTION 
-        'Not enough stock available for product_id: %', NEW.product_id;
+        'Not Enough Stock For product_id: %', NEW.product_id;
     END IF;
 
     RETURN NEW;
@@ -405,11 +405,11 @@ BEGIN
 
     IF is_vip THEN
         IF cart_count >= 5 THEN
-            RAISE EXCEPTION 'vip users cannot have more than five shopping carts.';
+            RAISE EXCEPTION 'VIP Cant Have More Than Five Shopping Carts';
         END IF;
     ELSE
         IF cart_count >= 1 THEN
-            RAISE EXCEPTION 'Registered users cannot have more than one shopping cart.';
+            RAISE EXCEPTION 'Register Cant Have More Than One Shopping Carts';
         END IF;
     END IF;
 

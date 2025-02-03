@@ -2,7 +2,7 @@
 
 CREATE DATABASE pissaze;
 
-\c pissaze_system
+\c pissaze
 
 CREATE TYPE transaction_enum AS ENUM ('successful', 'semi-successful', 'unsuccessful');
 CREATE TYPE discount_enum AS ENUM ('public', 'private');

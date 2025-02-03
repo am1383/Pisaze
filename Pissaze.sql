@@ -178,3 +178,111 @@ CREATE TABLE vip_client (
     expiration_time TIMESTAMP NOT NULL,
     FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
+
+CREATE TABLE address_client (
+    client_id       INT NOT NULL, 
+    province        VARCHAR(20) NOT NULL,
+    remain_address  VARCHAR(255) NOT NULL,
+    PRIMARY KEY (client_id, province, remain_address),
+    FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE shopping_cart (
+    cart_number    SERIAL NOT NULL, 
+    client_id      INT NOT NULL,
+    cart_status    cart_status_enum NOT NULL,
+    PRIMARY KEY (client_id, cart_number),
+    FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE discount_code (
+    code            INT PRIMARY KEY, 
+    amount          DECIMAL(10, 2) CHECK (amount > 0),
+    discount_limit  DECIMAL(5, 2) CHECK (discount_limit > 0),
+    usage_count     SMALLINT DEFAULT 0 CHECK (usage_count >= 0) , 
+    expiration_time TIMESTAMP,
+    code_type       discount_enum NOT NULL
+);
+
+CREATE TABLE private_code (
+    code        INT PRIMARY KEY, 
+    client_id   INT NOT NULL,
+    time_stamp  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (code) REFERENCES discount_code (code) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE transaction (
+    tracking_code       INT PRIMARY KEY, 
+    transaction_status  transaction_enum NOT NULL,
+    time_stamp          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE bank_transaction (
+    tracking_code   INT PRIMARY KEY, 
+    card_number     INT NOT NULL,
+    FOREIGN KEY (tracking_code) REFERENCES transaction (tracking_code) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE locked_shopping_cart (
+    cart_number     INT NOT NULL, 
+    client_id       INT NOT NULL,
+    locked_number   SERIAL NOT NULL,
+    PRIMARY KEY (client_id, cart_number, locked_number),
+    FOREIGN KEY (client_id, cart_number) REFERENCES shopping_cart (client_id, cart_number) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE deposit_wallet (
+    tracking_code   INT PRIMARY KEY, 
+    client_id       INT NOT NULL,
+    amount          DECIMAL(12, 2) NOT NULL,
+    FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (tracking_code) REFERENCES transaction (tracking_code) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE subscribes (
+    tracking_code   INT PRIMARY KEY, 
+    client_id       INT NOT NULL,
+    FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (tracking_code) REFERENCES transaction (tracking_code) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE refers (
+    referee_id  VARCHAR(20) PRIMARY KEY, 
+    referrer_id VARCHAR(20) NOT NULL,
+    FOREIGN KEY (referee_id) REFERENCES client (referral_code) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (referrer_id) REFERENCES client (referral_code) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE added_to (
+    cart_number     INT NOT NULL, 
+    client_id       INT NOT NULL,
+    locked_number   INT NOT NULL,
+    product_id      INT NOT NULL, 
+    quantity        SMALLINT CHECK (quantity > 0),
+    cart_price      DECIMAL(12, 2) CHECK (cart_price >= 0),
+    PRIMARY KEY (client_id, cart_number, locked_number, product_id),
+    FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (client_id, cart_number, locked_number) REFERENCES locked_shopping_cart (client_id, cart_number, locked_number) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE applied_to (
+    cart_number     INT NOT NULL, 
+    client_id       INT NOT NULL,
+    locked_number   INT NOT NULL,
+    discount_code   INT NOT NULL, 
+    time_stamp      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (client_id, cart_number, locked_number, discount_code),
+    FOREIGN KEY (discount_code) REFERENCES discount_code (code) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (client_id, cart_number, locked_number) REFERENCES locked_shopping_cart (client_id, cart_number, locked_number) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE issued_for (
+    tracking_code   INT PRIMARY KEY,
+    cart_number     INT NOT NULL, 
+    client_id       INT NOT NULL,
+    locked_number   INT NOT NULL,
+    FOREIGN KEY (client_id, cart_number, locked_number) REFERENCES locked_shopping_cart (client_id, cart_number, locked_number) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+--Triggers--

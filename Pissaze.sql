@@ -120,3 +120,45 @@ CREATE TABLE ssd (
     wattage     INT,
     FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
+
+CREATE TABLE compatible_mc_socket (
+    cpu_id          INT NOT NULL, 
+    motherboard_id  INT NOT NULL, 
+    FOREIGN KEY (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (cpu_id) REFERENCES cpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE compatible_cc_socket (
+    cpu_id      INT NOT NULL, 
+    cooler_id   INT NOT NULL, 
+    FOREIGN KEY (cooler_id) REFERENCES cooler (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (cpu_id) REFERENCES cpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE compatible_gm_slot (
+    gpu_id          INT NOT NULL, 
+    motherboard_id  INT NOT NULL, 
+    FOREIGN KEY (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (gpu_id) REFERENCES gpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE compatible_rm_slot (
+    ram_id          INT NOT NULL, 
+    motherboard_id  INT NOT NULL, 
+    FOREIGN KEY (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (ram_id) REFERENCES ram_stick (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE compatible_gp_connector (
+    gpu_id          INT NOT NULL, 
+    power_supply_id INT NOT NULL, 
+    FOREIGN KEY (gpu_id) REFERENCES gpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (power_supply_id) REFERENCES power_supply (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE compatible_sm_slot (
+    ssd_id          INT NOT NULL, 
+    motherboard_id  INT NOT NULL, 
+    FOREIGN KEY (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (ssd_id) REFERENCES ssd (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+);

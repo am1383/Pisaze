@@ -95,7 +95,7 @@ CREATE TABLE cpu (
     FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
-CREATE TABLE case (
+CREATE TABLE "case" (
     product_id      SERIAL PRIMARY KEY, 
     product_type    VARCHAR(50),
     color           VARCHAR(50),

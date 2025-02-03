@@ -301,7 +301,6 @@ BEGIN
     FROM refers r
     WHERE r.referee_id = referee_id;
 
-    -- Loop through the referral chain
     WHILE referrer_id IS NOT NULL LOOP
         CASE current_level
             WHEN 0 THEN discount_percentage := 50;
@@ -313,7 +312,6 @@ BEGIN
         WHERE referee_id = referral_code;
 
         IF discount_percentage < 1 THEN
-            --fixed discount (discount_percentage < 1%) 
             INSERT INTO discount_code (code, amount, discount_limit, expiration_time, code_type)
             VALUES (nextval('discount_code_code_seq'), 50000, 50000, NOW() + INTERVAL '1 week', 'private')
             RETURNING code INTO new_discount_code;
@@ -342,3 +340,26 @@ CREATE TRIGGER ref_trigger
 AFTER INSERT ON refers
 FOR EACH ROW
 EXECUTE FUNCTION ref_handler();
+
+CREATE OR REPLACE FUNCTION product_stock()
+RETURNS TRIGGER AS $$
+DECLARE
+    stock_count SMALLINT;
+BEGIN
+    SELECT p.stock_count INTO stock_count
+    FROM product p
+    WHERE p.id = NEW.product_id;
+
+    IF stock_count < NEW.quantity THEN
+        RAISE EXCEPTION 
+        'Not enough stock available for product_id: %', NEW.product_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER out_of_stock_trigger
+BEFORE INSERT OR UPDATE ON added_to
+FOR EACH ROW
+EXECUTE FUNCTION product_stock();

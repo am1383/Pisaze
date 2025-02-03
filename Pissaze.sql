@@ -162,3 +162,19 @@ CREATE TABLE compatible_sm_slot (
     FOREIGN KEY (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY (ssd_id) REFERENCES ssd (product_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
+
+CREATE TABLE client (
+    client_id          SERIAL PRIMARY KEY, 
+    phone_number       VARCHAR(15) NOT NULL UNIQUE,
+    first_name         VARCHAR(50) NOT NULL,
+    last_name          VARCHAR(50) NOT NULL,
+    wallet_balance     DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+    time_stamp         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    referral_code      VARCHAR(20) NOT NULL UNIQUE
+);
+
+CREATE TABLE vip_client (
+    client_id       INT PRIMARY KEY, 
+    expiration_time TIMESTAMP NOT NULL,
+    FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
+);

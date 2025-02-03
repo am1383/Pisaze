@@ -8,8 +8,8 @@ CREATE DATABASE pisaze;
 
 CREATE TYPE transaction_enum AS ENUM ('successful', 'semi-successful', 'unsuccessful');
 CREATE TYPE discount_enum AS ENUM ('public', 'private');
-CREATE TYPE cart_status_enum AS ENUM ('locked', 'registered', 'blocked');
-CREATE TYPE cooling_method_enum AS ENUM ('liquid', 'air');
+CREATE TYPE cart_enum AS ENUM ('locked', 'registered', 'blocked');
+CREATE TYPE cooling_enum AS ENUM ('liquid', 'air');
 
 --Create Tables
 
@@ -60,7 +60,7 @@ CREATE TABLE ram_stick (
 
 CREATE TABLE cooler (
     product_id              SERIAL PRIMARY KEY, 
-    cooling_method          cooling_method_enum,
+    cooling_method          cooling_enum,
     fan_size                INT,              
     max_rotational_speed    INT,  
     wattage                 INT,               
@@ -196,7 +196,7 @@ CREATE TABLE address_client (
 CREATE TABLE shopping_cart (
     cart_number    SERIAL NOT NULL, 
     client_id      INT NOT NULL,
-    cart_status    cart_status_enum NOT NULL,
+    cart_status    cart_enum NOT NULL,
     PRIMARY KEY (client_id, cart_number),
     FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
 );

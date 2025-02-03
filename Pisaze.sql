@@ -1,4 +1,6 @@
---pisaze Database Final Project--
+--Pisaze Database Final Project--
+
+--Create Database & Connect To Database--
 
 CREATE DATABASE pisaze;
 
@@ -8,6 +10,8 @@ CREATE TYPE transaction_enum AS ENUM ('successful', 'semi-successful', 'unsucces
 CREATE TYPE discount_enum AS ENUM ('public', 'private');
 CREATE TYPE cart_status_enum AS ENUM ('locked', 'registered', 'blocked');
 CREATE TYPE cooling_method_enum AS ENUM ('liquid', 'air');
+
+--Create Tables
 
 CREATE TABLE product (
     id              INT PRIMARY KEY, 
@@ -120,6 +124,8 @@ CREATE TABLE ssd (
     wattage     INT,
     FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
+
+--Create Compatible Tables--
 
 CREATE TABLE compatible_mc_socket (
     cpu_id          INT NOT NULL, 

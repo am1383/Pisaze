@@ -1,8 +1,8 @@
---Pissaze Database Final Project--
+--pisaze Database Final Project--
 
-CREATE DATABASE pissaze;
+CREATE DATABASE pisaze;
 
-\c pissaze
+\c pisaze
 
 CREATE TYPE transaction_enum AS ENUM ('successful', 'semi-successful', 'unsuccessful');
 CREATE TYPE discount_enum AS ENUM ('public', 'private');
@@ -286,3 +286,59 @@ CREATE TABLE issued_for (
 );
 
 --Triggers--
+
+CREATE OR REPLACE FUNCTION ref_handler() 
+RETURNS TRIGGER AS $$
+DECLARE
+    referrer_id         VARCHAR(20);
+    referee_id          VARCHAR(20) := NEW.referee_id;
+    current_level       INT := 0;
+    discount_percentage DECIMAL(10, 2);
+    new_discount_code   INT;
+    client_id           INT;
+BEGIN
+    SELECT r.referrer_id INTO referrer_id
+    FROM refers r
+    WHERE r.referee_id = referee_id;
+
+    -- Loop through the referral chain
+    WHILE referrer_id IS NOT NULL LOOP
+        CASE current_level
+            WHEN 0 THEN discount_percentage := 50;
+            ELSE discount_percentage := (50 / (2 * current_level)) / 100;
+        END CASE;
+
+        SELECT c.client_id INTO client_id
+        FROM client c
+        WHERE referee_id = referral_code;
+
+        IF discount_percentage < 1 THEN
+            --fixed discount (discount_percentage < 1%) 
+            INSERT INTO discount_code (code, amount, discount_limit, expiration_time, code_type)
+            VALUES (nextval('discount_code_code_seq'), 50000, 50000, NOW() + INTERVAL '1 week', 'private')
+            RETURNING code INTO new_discount_code;
+        ELSE 
+            INSERT INTO discount_code (code, amount, discount_limit, expiration_time, code_type)
+            VALUES (nextval('discount_code_code_seq'), discount_percentage, 1000000, NOW() + INTERVAL '1 week', 'private')
+            RETURNING code INTO new_discount_code;
+        END IF;
+
+        INSERT INTO private_code (code, client_id, time_stamp)
+        VALUES (new_discount_code, client_id, NOW());
+
+        SELECT r.referrer_id , r.referee_id 
+        INTO referrer_id, referee_id
+        FROM refers r
+        WHERE r.referee_id = referrer_id;
+
+        current_level := current_level + 1;
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER ref_trigger
+AFTER INSERT ON refers
+FOR EACH ROW
+EXECUTE FUNCTION ref_handler();

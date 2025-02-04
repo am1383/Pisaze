@@ -6,12 +6,14 @@ CREATE DATABASE pisaze;
 
 \c pisaze
 
+--Enums Section--
+
 CREATE TYPE transaction_enum AS ENUM ('successful', 'mid-successful', 'unsuccessful');
 CREATE TYPE discount_enum AS ENUM ('public', 'private');
 CREATE TYPE cart_enum AS ENUM ('locked', 'blocked', 'active');
 CREATE TYPE cooling_enum AS ENUM ('liquid', 'air');
 
---Create Tables
+--Create Tables--
 
 CREATE TABLE product (
     id              INT PRIMARY KEY, 
@@ -144,29 +146,29 @@ CREATE TABLE compatible_cc_socket (
 CREATE TABLE compatible_gm_slot (
     gpu_id          INT NOT NULL, 
     motherboard_id  INT NOT NULL, 
-    FOREIGN KEY (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (gpu_id) REFERENCES gpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (gpu_id) REFERENCES gpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_rm_slot (
     ram_id          INT NOT NULL, 
     motherboard_id  INT NOT NULL, 
-    FOREIGN KEY (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (ram_id) REFERENCES ram_stick (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (ram_id) REFERENCES ram_stick (product_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_gp_connector (
     gpu_id          INT NOT NULL, 
     power_supply_id INT NOT NULL, 
-    FOREIGN KEY (gpu_id) REFERENCES gpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (power_supply_id) REFERENCES power_supply (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (gpu_id) REFERENCES gpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (power_supply_id) REFERENCES power_supply (product_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_sm_slot (
     ssd_id          INT NOT NULL, 
     motherboard_id  INT NOT NULL, 
-    FOREIGN KEY (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (ssd_id) REFERENCES ssd (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (ssd_id) REFERENCES ssd (product_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE client (
@@ -182,23 +184,23 @@ CREATE TABLE client (
 CREATE TABLE vip_client (
     client_id       INT PRIMARY KEY, 
     expiration_time TIMESTAMP NOT NULL,
-    FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE address_client (
     client_id       INT NOT NULL, 
     province        VARCHAR(20) NOT NULL,
-    remain_address  VARCHAR(255) NOT NULL,
-    PRIMARY KEY (client_id, province, remain_address),
-    FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
+    remain_address  VARCHAR(191) NOT NULL,
+    PRIMARY KEY     (client_id, province, remain_address),
+    FOREIGN KEY     (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE shopping_cart (
     cart_number    SERIAL NOT NULL, 
     client_id      INT NOT NULL,
     cart_status    cart_enum NOT NULL,
-    PRIMARY KEY (client_id, cart_number),
-    FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
+    PRIMARY KEY    (client_id, cart_number),
+    FOREIGN KEY    (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE discount_code (
@@ -227,30 +229,30 @@ CREATE TABLE transaction (
 CREATE TABLE bank_transaction (
     tracking_code   INT PRIMARY KEY, 
     card_number     INT NOT NULL,
-    FOREIGN KEY (tracking_code) REFERENCES transaction (tracking_code) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (tracking_code) REFERENCES transaction (tracking_code) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE locked_shopping_cart (
     cart_number     INT NOT NULL, 
     client_id       INT NOT NULL,
     locked_number   SERIAL NOT NULL,
-    PRIMARY KEY (client_id, cart_number, locked_number),
-    FOREIGN KEY (client_id, cart_number) REFERENCES shopping_cart (client_id, cart_number) ON UPDATE CASCADE ON DELETE CASCADE
+    PRIMARY KEY     (client_id, cart_number, locked_number),
+    FOREIGN KEY     (client_id, cart_number) REFERENCES shopping_cart (client_id, cart_number) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE deposit_wallet (
     tracking_code   INT PRIMARY KEY, 
     client_id       INT NOT NULL,
     amount          DECIMAL(12, 2) NOT NULL,
-    FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (tracking_code) REFERENCES transaction (tracking_code) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (tracking_code) REFERENCES transaction (tracking_code) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE subscribes (
     tracking_code   INT PRIMARY KEY, 
     client_id       INT NOT NULL,
-    FOREIGN KEY (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (tracking_code) REFERENCES transaction (tracking_code) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (tracking_code) REFERENCES transaction (tracking_code) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE refers (
@@ -267,9 +269,9 @@ CREATE TABLE added_to (
     product_id      INT NOT NULL, 
     quantity        SMALLINT CHECK (quantity > 0),
     cart_price      DECIMAL(12, 2) CHECK (cart_price >= 0),
-    PRIMARY KEY (client_id, cart_number, locked_number, product_id),
-    FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (client_id, cart_number, locked_number) REFERENCES locked_shopping_cart (client_id, cart_number, locked_number) ON UPDATE CASCADE ON DELETE CASCADE
+    PRIMARY KEY     (client_id, cart_number, locked_number, product_id),
+    FOREIGN KEY     (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (client_id, cart_number, locked_number) REFERENCES locked_shopping_cart (client_id, cart_number, locked_number) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE applied_to (
@@ -278,9 +280,9 @@ CREATE TABLE applied_to (
     locked_number   INT NOT NULL,
     discount_code   INT NOT NULL, 
     time_stamp      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (client_id, cart_number, locked_number, discount_code),
-    FOREIGN KEY (discount_code) REFERENCES discount_code (code) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (client_id, cart_number, locked_number) REFERENCES locked_shopping_cart (client_id, cart_number, locked_number) ON UPDATE CASCADE ON DELETE CASCADE
+    PRIMARY KEY     (client_id, cart_number, locked_number, discount_code),
+    FOREIGN KEY     (discount_code) REFERENCES discount_code (code) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (client_id, cart_number, locked_number) REFERENCES locked_shopping_cart (client_id, cart_number, locked_number) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE issued_for (
@@ -288,7 +290,7 @@ CREATE TABLE issued_for (
     cart_number     INT NOT NULL, 
     client_id       INT NOT NULL,
     locked_number   INT NOT NULL,
-    FOREIGN KEY (client_id, cart_number, locked_number) REFERENCES locked_shopping_cart (client_id, cart_number, locked_number) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (client_id, cart_number, locked_number) REFERENCES locked_shopping_cart (client_id, cart_number, locked_number) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 --Triggers--

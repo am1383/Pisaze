@@ -6,9 +6,9 @@ CREATE DATABASE pisaze;
 
 \c pisaze
 
-CREATE TYPE transaction_enum AS ENUM ('successful', 'semi-successful', 'unsuccessful');
+CREATE TYPE transaction_enum AS ENUM ('successful', 'mid-successful', 'unsuccessful');
 CREATE TYPE discount_enum AS ENUM ('public', 'private');
-CREATE TYPE cart_enum AS ENUM ('locked', 'blocked');
+CREATE TYPE cart_enum AS ENUM ('locked', 'blocked', 'active');
 CREATE TYPE cooling_enum AS ENUM ('liquid', 'air');
 
 --Create Tables
@@ -205,7 +205,7 @@ CREATE TABLE discount_code (
     code            INT PRIMARY KEY, 
     amount          DECIMAL(10, 2) CHECK (amount > 0),
     discount_limit  DECIMAL(5, 2) CHECK (discount_limit > 0),
-    usage_count     SMALLINT DEFAULT 0 CHECK (usage_count >= 0) , 
+    usage_limit     SMALLINT DEFAULT 0 CHECK (usage_limit >= 0) , 
     expiration_time TIMESTAMP,
     code_type       discount_enum NOT NULL
 );
@@ -310,7 +310,7 @@ BEGIN
     WHILE referrer_id IS NOT NULL LOOP
         CASE current_level
             WHEN 0 THEN discount_percentage := 50;
-            ELSE discount_percentage := (50 / (2 * current_level)) / 100;
+            ELSE discount_percentage := 50 / (2 * current_level);
         END CASE;
 
         SELECT c.client_id INTO client_id
@@ -421,3 +421,29 @@ CREATE TRIGGER cart_limit_trigger
 BEFORE INSERT ON shopping_cart
 FOR EACH ROW
 EXECUTE FUNCTION cart_limit();
+
+CREATE OR REPLACE FUNCTION append_discount()
+RETURNS TRIGGER AS $$
+DECLARE
+    code_record RECORD;
+BEGIN
+    SELECT usage_count, usage_limit, expiration_time
+    INTO code_record
+    FROM discount_code
+    WHERE code = NEW.code;
+    IF code_record IS NULL THEN
+        RAISE EXCEPTION 'This Discount Code Is Invalid';
+    END IF;
+    IF code_record.expiration_time < NOW() THEN
+        RAISE EXCEPTION 'This Discount Code Has Been Expired';
+    END IF;
+    IF code_record.usage_count >= code_record.usage_limit THEN
+        RAISE EXCEPTION 'This Discount Code Is No Longer Available';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER check_expiration_limit_discount_trigger
+BEFORE INSERT ON applied_to
+FOR EACH ROW
+EXECUTE FUNCTION append_discount();

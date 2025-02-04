@@ -325,6 +325,8 @@ BEGIN
             INSERT INTO discount_code (code, amount, discount_limit, expiration_time, code_type)
             VALUES (nextval('discount_code_code_seq'), discount_percentage, 1000000, NOW() + INTERVAL '1 week', 'private')
             RETURNING code INTO new_discount_code;
+        ELSE
+            discount_percentage := discount_percentage / 100 
         END IF;
 
         INSERT INTO private_code (code, client_id, time_stamp)

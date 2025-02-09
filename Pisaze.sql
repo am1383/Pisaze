@@ -398,27 +398,39 @@ EXECUTE FUNCTION product_stock();
 CREATE OR REPLACE FUNCTION cart_limit()
 RETURNS TRIGGER AS $$
 DECLARE
-    cart_count INT;
-    is_vip BOOLEAN;
+    cart_count_active   INT;
+    cart_count_total    INT;
+    is_vip              BOOLEAN;
 BEGIN
-    
+
     SELECT EXISTS (
         SELECT 1
         FROM vip_client
         WHERE client_id = NEW.client_id
     ) INTO is_vip;
 
-    SELECT COUNT(*) INTO cart_count
+    SELECT COUNT(*) 
+    INTO cart_count_active
+    FROM shopping_cart
+    WHERE client_id = NEW.client_id
+      AND cart_status = 'active';
+
+    SELECT COUNT(*) 
+    INTO cart_count_total
     FROM shopping_cart
     WHERE client_id = NEW.client_id;
 
+    IF cart_count_total >= 5 THEN 
+        RAISE EXCEPTION 'users cannot have more than five shopping carts.';
+    END IF;
+
     IF is_vip THEN
-        IF cart_count >= 5 THEN
-            RAISE EXCEPTION 'VIP Cant Have More Than Five Shopping Carts';
+        IF cart_count_active >= 5 THEN
+            RAISE EXCEPTION 'VIP users cannot have more than five active shopping carts.';
         END IF;
     ELSE
-        IF cart_count >= 1 THEN
-            RAISE EXCEPTION 'Register Cant Have More Than One Shopping Carts';
+        IF cart_count_active >= 1 THEN
+            RAISE EXCEPTION 'Registered users cannot have more than one active shopping cart.';
         END IF;
     END IF;
 
@@ -427,9 +439,10 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER cart_limit_trigger
-BEFORE INSERT ON shopping_cart
+BEFORE INSERT OR UPDATE ON shopping_cart
 FOR EACH ROW
 EXECUTE FUNCTION cart_limit();
+
 
 CREATE OR REPLACE FUNCTION append_discount()
 RETURNS TRIGGER AS $$
@@ -453,10 +466,11 @@ BEGIN
 
 END;
 $$ LANGUAGE plpgsql;
-CREATE TRIGGER check_expiration_limit_discount_trigger
+CREATE TRIGGER expiration_limit_discount_trigger
 BEFORE INSERT ON applied_to
 FOR EACH ROW
 EXECUTE FUNCTION append_discount();
+
 
 CREATE OR REPLACE FUNCTION blocked_cart()
 RETURNS TRIGGER AS $$
@@ -491,3 +505,20 @@ CREATE TRIGGER applied_to_blocked_cart_trigger
 BEFORE INSERT OR UPDATE ON applied_to
 FOR EACH ROW
 EXECUTE FUNCTION blocked_cart();
+
+
+CREATE OR REPLACE FUNCTION stock_after_add_to_cart()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE product
+    SET stock_count = stock_count - NEW.quantity
+    WHERE id = NEW.product_id;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER reduce_stock_trigger
+AFTER INSERT ON added_to
+FOR EACH ROW
+EXECUTE FUNCTION stock_after_add_to_cart();

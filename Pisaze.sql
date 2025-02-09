@@ -476,27 +476,32 @@ EXECUTE FUNCTION append_discount();
 CREATE OR REPLACE FUNCTION blocked_cart()
 RETURNS TRIGGER AS $$
 DECLARE
-    cart_status cart_status_enum;
+    cart_status_val cart_status_enum;
 BEGIN
     SELECT cart_status
-    INTO cart_status
-    FROM locked_shopping_cart NATURAL JOIN shopping_cart
-    WHERE cart_number = NEW.cart_number;
-    IF cart_status = 'blocked'THEN
-        RAISE EXCEPTION 'Cart % Is Blocked', NEW.cart_number;
+    INTO cart_status_val
+    FROM shopping_cart
+    WHERE cart_number = NEW.cart_number 
+      AND client_id = NEW.client_id;
+
+    IF cart_status_val = 'blocked' THEN
+        RAISE EXCEPTION 'Cart % is blocked.', NEW.cart_number;
     END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER added_to_blocked_cart_trigger
+CREATE TRIGGER adding_blocked_cart_trigger
 BEFORE INSERT OR UPDATE ON added_to
 FOR EACH ROW
 EXECUTE FUNCTION blocked_cart();
+
 CREATE TRIGGER issued_for_blocked_cart_trigger
 BEFORE INSERT OR UPDATE ON issued_for
 FOR EACH ROW
 EXECUTE FUNCTION blocked_cart();
+
 CREATE TRIGGER applied_to_blocked_cart_trigger
 BEFORE INSERT OR UPDATE ON applied_to
 FOR EACH ROW

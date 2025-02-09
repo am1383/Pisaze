@@ -154,8 +154,8 @@ CREATE TABLE compatible_gp_connector (
     gpu_id          INT NOT NULL, 
     power_supply_id INT NOT NULL, 
     PRIMARY KEY     (gpu_id, power_supply_id),
-    FOREIGN KEY     (gpu_id)          REFERENCES gpu (product_id)          ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY     (power_supply_id) REFERENCES power_supply (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (gpu_id)          REFERENCES gpu (product_id)          ON UPDATE CASCADE ON DELETE CASCADE,
 );
 
 CREATE TABLE compatible_gm_slot (
@@ -178,8 +178,8 @@ CREATE TABLE compatible_sm_slot (
     ssd_id          INT NOT NULL, 
     motherboard_id  INT NOT NULL,
     PRIMARY KEY     (ssd_id, motherboard_id), 
-    FOREIGN KEY     (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY     (ssd_id)         REFERENCES ssd (product_id)         ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
 );
 
 CREATE TABLE client (
@@ -194,21 +194,21 @@ CREATE TABLE client (
 
 CREATE TABLE vip_client (
     client_id       INT PRIMARY KEY, 
-    expiration_time TIMESTAMP NOT NULL,
+    expiration_time TIMESTAMP   NOT NULL,
     FOREIGN KEY     (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE shopping_cart (
-    cart_number     SERIAL NOT NULL, 
-    client_id       INT NOT NULL,
+    cart_number     SERIAL    NOT NULL, 
+    client_id       INT       NOT NULL,
     cart_status     cart_enum NOT NULL,
     PRIMARY KEY     (client_id, cart_number),
     FOREIGN KEY     (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE address_of_client (
-    client_id       INT NOT NULL, 
-    province        VARCHAR(20) NOT NULL,
+    client_id       INT          NOT NULL, 
+    province        VARCHAR(20)  NOT NULL,
     remain_address  VARCHAR(191) NOT NULL,
     PRIMARY KEY     (client_id, province, remain_address),
     FOREIGN KEY     (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE
@@ -220,7 +220,7 @@ CREATE TABLE discount_code (
     discount_limit  DECIMAL(12, 2)     CHECK (discount_limit > 0),
     usage_limit     SMALLINT DEFAULT 1 CHECK (usage_limit >= 0) , 
     expiration_time TIMESTAMP,
-    code_type       discount_enum NOT NULL
+    code_type       discount_enum      NOT NULL
 );
 
 CREATE TABLE private_code (
@@ -508,10 +508,10 @@ DECLARE
     code_record RECORD := NULL;
     usage INT;
 BEGIN
-    SELECT d.usage_count, d.usage_limit, d.expiration_time
+    SELECT dc.usage_count, dc.usage_limit, dc.expiration_time
     INTO code_record
-    FROM discount_code d
-    WHERE d.code = NEW.code;
+    FROM discount_code AS dc
+    WHERE dc.code = NEW.code;
 
     IF code_record IS NULL THEN
         RAISE EXCEPTION 'Invalid Code';
@@ -613,29 +613,29 @@ DECLARE
 BEGIN
     SELECT t.transaction_type
     INTO transaction_type_val
-    FROM transaction t
+    FROM transaction AS t
     WHERE t.tracking_code = NEW.tracking_code;
 
     IF transaction_type_val = 'wallet' THEN
 
         SELECT c.wallet_balance
         INTO current_balance
-        FROM client c
+        FROM client AS c
         WHERE c.client_id = NEW.client_id;
 
-        SELECT COALESCE(SUM(a.cart_price), 0) 
+        SELECT COALESCE(SUM(at.cart_price), 0) 
         INTO total_amount
-        FROM added_to a
-        WHERE a.client_id = NEW.client_id
-            AND a.cart_number = NEW.cart_number
-            AND a.locked_number = NEW.locked_number;
+        FROM added_to AS at
+        WHERE at.client_id = NEW.client_id
+            AND at.cart_number = NEW.cart_number
+            AND at.locked_number = NEW.locked_number;
 
-        SELECT a.code
+        SELECT at.code
         INTO discount_code
         FROM applied_to a 
-        WHERE a.client_id = NEW.client_id
-            AND a.cart_number = NEW.cart_number
-            AND a.locked_number = NEW.locked_number;
+        WHERE at.client_id = NEW.client_id
+            AND at.cart_number = NEW.cart_number
+            AND at.locked_number = NEW.locked_number;
 
         IF discount_code IS NOT NULL THEN
             SELECT amount, discount_limit
@@ -684,7 +684,7 @@ DECLARE
 BEGIN
     SELECT (v.expiration_time < NOW()) 
     INTO is_vip_expired
-    FROM vip_client v
+    FROM vip_client AS v
     WHERE v.client_id = NEW.client_id;
 
     IF is_vip_expired AND NEW.cart_number <> 1 THEN
@@ -733,7 +733,7 @@ CREATE OR REPLACE FUNCTION monthly_cashback()
 RETURNS VOID AS $$
 DECLARE
     vip_client_record RECORD;
-    cashback_amount DECIMAL(12,2);
+    cashback_amount DECIMAL(12, 2);
 BEGIN
     FOR vip_client_record IN 
         SELECT c.client_id, COALESCE(SUM(adt.cart_price), 0) * 0.15 AS total_cashback

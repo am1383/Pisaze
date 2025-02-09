@@ -12,10 +12,12 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 
 --Enums Section--
 
-CREATE TYPE transaction_enum AS ENUM ('successful', 'mid-successful', 'unsuccessful');
+CREATE TYPE transaction_status_enum AS ENUM ('successful', 'mid-successful', 'unsuccessful');
+CREATE TYPE transaction_type_enum AS ENUM ('bank', 'wallet');
 CREATE TYPE discount_enum AS ENUM ('public', 'private');
 CREATE TYPE cart_enum AS ENUM ('locked', 'blocked', 'active');
 CREATE TYPE cooling_enum AS ENUM ('liquid', 'air');
+
 
 --Create Tables--
 
@@ -226,7 +228,7 @@ CREATE TABLE private_code (
 
 CREATE TABLE transaction (
     tracking_code       INT PRIMARY KEY, 
-    transaction_status  transaction_enum NOT NULL,
+    transaction_status  transaction_status_enum NOT NULL,
     time_stamp          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

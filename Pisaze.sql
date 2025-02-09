@@ -28,7 +28,7 @@ CREATE TABLE product (
     current_price       INT,
     stock_count         SMALLINT,
     category            VARCHAR(50),
-    product_image       BYTEA
+    image               BYTEA
 );
 
 CREATE TABLE motherboard (
@@ -82,7 +82,7 @@ CREATE TABLE cpu (
 
 CREATE TABLE "case" (
     product_id           INT PRIMARY KEY, 
-    product_type         VARCHAR(50),
+    type                 VARCHAR(50),
     color                VARCHAR(50),
     material             VARCHAR(50),
     fan_size             INT,         
@@ -139,7 +139,7 @@ CREATE TABLE compatible_cc_socket (
     cooler_id       INT NOT NULL,
     PRIMARY KEY     (cpu_id, cooler_id), 
     FOREIGN KEY     (cooler_id) REFERENCES product_cooler (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (cpu_id) REFERENCES product_cpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (cpu_id)    REFERENCES product_cpu (product_id)    ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_rm_slot (
@@ -147,14 +147,14 @@ CREATE TABLE compatible_rm_slot (
     motherboard_id  INT NOT NULL, 
     PRIMARY KEY     (ram_id, motherboard_id),
     FOREIGN KEY     (motherboard_id) REFERENCES product_motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (ram_id) REFERENCES product_ram_stick (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (ram_id)         REFERENCES product_ram_stick (product_id)   ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_gp_connector (
     gpu_id          INT NOT NULL, 
     power_supply_id INT NOT NULL, 
     PRIMARY KEY     (gpu_id, power_supply_id),
-    FOREIGN KEY     (gpu_id) REFERENCES product_gpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (gpu_id)          REFERENCES product_gpu (product_id)          ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY     (power_supply_id) REFERENCES product_power_supply (product_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
@@ -163,7 +163,7 @@ CREATE TABLE compatible_gm_slot (
     motherboard_id  INT NOT NULL,
     PRIMARY KEY     (gpu_id, motherboard_id), 
     FOREIGN KEY     (motherboard_id) REFERENCES product_motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (gpu_id) REFERENCES product_gpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (gpu_id)         REFERENCES product_gpu (product_id)         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_mc_socket (
@@ -171,7 +171,7 @@ CREATE TABLE compatible_mc_socket (
     motherboard_id  INT NOT NULL, 
     PRIMARY KEY     (cpu_id, motherboard_id), 
     FOREIGN KEY     (motherboard_id) REFERENCES product_motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (cpu_id) REFERENCES product_cpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (cpu_id)         REFERENCES product_cpu (product_id)         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_sm_slot (
@@ -179,7 +179,7 @@ CREATE TABLE compatible_sm_slot (
     motherboard_id  INT NOT NULL,
     PRIMARY KEY     (ssd_id, motherboard_id), 
     FOREIGN KEY     (motherboard_id) REFERENCES product_motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (ssd_id) REFERENCES product_ssd (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (ssd_id)         REFERENCES product_ssd (product_id)         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE client (
@@ -227,8 +227,8 @@ CREATE TABLE private_code (
     code            INT PRIMARY KEY, 
     client_id       INT NOT NULL,
     time_stamp      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY     (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (code) REFERENCES discount_code (code) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (client_id) REFERENCES client (client_id)   ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (code)      REFERENCES discount_code (code) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE transaction (
@@ -257,21 +257,21 @@ CREATE TABLE deposit_wallet (
     tracking_code   INT PRIMARY KEY, 
     client_id       INT NOT NULL,
     amount          DECIMAL(12, 2) NOT NULL,
-    FOREIGN KEY     (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (client_id)     REFERENCES client (client_id)          ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY     (tracking_code) REFERENCES transaction (tracking_code) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE subscribes (
     tracking_code   INT PRIMARY KEY, 
     client_id       INT NOT NULL,
-    FOREIGN KEY     (client_id) REFERENCES client (client_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (client_id)     REFERENCES client (client_id)          ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY     (tracking_code) REFERENCES transaction (tracking_code) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE refers (
     referee_id      VARCHAR(20) PRIMARY KEY, 
     referrer_id     VARCHAR(20) NOT NULL,
-    FOREIGN KEY     (referee_id) REFERENCES client (referral_code) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (referee_id)  REFERENCES client (referral_code) ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY     (referrer_id) REFERENCES client (referral_code) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
@@ -396,8 +396,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER adding_blocked_cart_trigger
-BEFORE INSERT OR UPDATE ON added_to
+CREATE TRIGGER applied_to_blocked_cart_trigger
+BEFORE INSERT OR UPDATE ON applied_to
 FOR EACH ROW
 EXECUTE FUNCTION blocked_cart();
 
@@ -406,8 +406,8 @@ BEFORE INSERT OR UPDATE ON issued_for
 FOR EACH ROW
 EXECUTE FUNCTION blocked_cart();
 
-CREATE TRIGGER applied_to_blocked_cart_trigger
-BEFORE INSERT OR UPDATE ON applied_to
+CREATE TRIGGER adding_blocked_cart_trigger
+BEFORE INSERT OR UPDATE ON added_to
 FOR EACH ROW
 EXECUTE FUNCTION blocked_cart();
 

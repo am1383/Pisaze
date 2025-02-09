@@ -18,11 +18,10 @@ CREATE TYPE discount_enum AS ENUM ('public', 'private');
 CREATE TYPE cart_enum AS ENUM ('locked', 'blocked', 'active');
 CREATE TYPE cooling_enum AS ENUM ('liquid', 'air');
 
-
 --Create Tables--
 
 CREATE TABLE product (
-    id              INT PRIMARY KEY, 
+    id              SERIAL PRIMARY KEY, 
     brand           VARCHAR(50) NOT NULL,
     model           VARCHAR(50) NOT NULL,
     current_price   INT,
@@ -32,30 +31,30 @@ CREATE TABLE product (
 );
 
 CREATE TABLE hdd (
-    product_id         SERIAL PRIMARY KEY, 
-    capacity           DECIMAL(5, 2),          
-    rotational_speed   INT,  
-    wattage            INT,           
-    depth              DECIMAL(5, 2), 
-    height             DECIMAL(5, 2),    
-    width              DECIMAL(5, 2),
+    product_id          INT PRIMARY KEY, 
+    capacity            DECIMAL(5, 2),          
+    rotational_speed    INT,  
+    wattage             INT,           
+    depth               DECIMAL(5, 2), 
+    height              DECIMAL(5, 2),    
+    width               DECIMAL(5, 2),
     FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE gpu (
-    product_id   SERIAL PRIMARY KEY, 
-    ram_size     INT,         
-    clock_speed  DECIMAL(5, 2), 
-    num_fans     SMALLINT,
-    wattage      INT,
-    depth        DECIMAL(5, 2), 
-    height       DECIMAL(5, 2),    
-    width        DECIMAL(5, 2),
+    product_id  INT PRIMARY KEY, 
+    ram_size    INT,         
+    clock_speed DECIMAL(5, 2), 
+    num_fans    SMALLINT,
+    wattage     INT,
+    depth       DECIMAL(5, 2), 
+    height      DECIMAL(5, 2),    
+    width       DECIMAL(5, 2),
     FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE ram_stick (
-    product_id  SERIAL PRIMARY KEY, 
+    product_id  INT PRIMARY KEY, 
     generation  VARCHAR(50),
     capacity    DECIMAL(5, 2),    
     frequency   DECIMAL(5, 2),   
@@ -67,7 +66,7 @@ CREATE TABLE ram_stick (
 );
 
 CREATE TABLE cooler (
-    product_id              SERIAL PRIMARY KEY, 
+    product_id              INT PRIMARY KEY, 
     cooling_method          cooling_enum,
     fan_size                INT,              
     max_rotational_speed    INT,  
@@ -79,7 +78,7 @@ CREATE TABLE cooler (
 );
 
 CREATE TABLE motherboard (
-    product_id          SERIAL PRIMARY KEY, 
+    product_id          INT PRIMARY KEY, 
     chipset_name        VARCHAR(50),
     num_memory_slots    SMALLINT,
     memory_speed_range  DECIMAL(5, 2),
@@ -91,7 +90,7 @@ CREATE TABLE motherboard (
 );
 
 CREATE TABLE cpu (
-    product_id          SERIAL PRIMARY KEY, 
+    product_id          INT PRIMARY KEY, 
     generation          VARCHAR(50),
     microarchitecture   VARCHAR(50),
     num_cores           SMALLINT,
@@ -104,7 +103,7 @@ CREATE TABLE cpu (
 );
 
 CREATE TABLE "case" (
-    product_id      SERIAL PRIMARY KEY, 
+    product_id      INT PRIMARY KEY, 
     product_type    VARCHAR(50),
     color           VARCHAR(50),
     material        VARCHAR(50),
@@ -118,14 +117,14 @@ CREATE TABLE "case" (
 ); 
 
 CREATE TABLE ssd (
-    product_id  SERIAL PRIMARY KEY, 
+    product_id  INT PRIMARY KEY, 
     capacity    DECIMAL(5, 2), 
     wattage     INT,
     FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE power_supply (
-    product_id          SERIAL PRIMARY KEY, 
+    product_id          INT PRIMARY KEY, 
     supported_wattage   INT,
     depth               DECIMAL(5, 2), 
     height              DECIMAL(5, 2),    

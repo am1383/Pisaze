@@ -374,15 +374,15 @@ EXECUTE FUNCTION ref_handler();
 CREATE OR REPLACE FUNCTION product_stock()
 RETURNS TRIGGER AS $$
 DECLARE
-    stock_count SMALLINT;
+    stock_count_val SMALLINT;
 BEGIN
-    SELECT p.stock_count INTO stock_count
-    FROM product p
-    WHERE p.id = NEW.product_id;
+    SELECT stock_count INTO stock_count_val
+    FROM product 
+    WHERE id = NEW.product_id;
 
-    IF stock_count < NEW.quantity THEN
+    IF stock_count_val < NEW.quantity THEN
         RAISE EXCEPTION 
-        'Not Enough Stock For product_id: %', NEW.product_id;
+        'Not Enough Slot For product_id: %', NEW.product_id;
     END IF;
 
     RETURN NEW;
@@ -394,21 +394,6 @@ BEFORE INSERT OR UPDATE ON added_to
 FOR EACH ROW
 EXECUTE FUNCTION product_stock();
 
-CREATE OR REPLACE FUNCTION reduce_stock()
-RETURNS TRIGGER AS $$
-BEGIN
-    UPDATE product
-    SET stock_count = stock_count - NEW.quantity
-    WHERE id = NEW.product_id;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER reduce_stock_trigger
-AFTER INSERT ON added_to
-FOR EACH ROW
-EXECUTE FUNCTION reduce_stock();
 
 CREATE OR REPLACE FUNCTION cart_limit()
 RETURNS TRIGGER AS $$

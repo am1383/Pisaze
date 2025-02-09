@@ -2,9 +2,9 @@
 
 --Create & Connect to the database
 
-CREATE DATABASE pissaze;
+CREATE DATABASE pisaze;
 
-\c pissaze_system
+\c pisaze
 
 --Eextension For Job Scheduled
 
@@ -15,7 +15,7 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 
 CREATE TYPE cart_enum AS ENUM ('locked', 'blocked', 'active');
 CREATE TYPE discount_enum AS ENUM ('public', 'private');
-CREATE TYPE transaction_status_enum AS ENUM ('Successful', 'mid-successful', 'unsuccessful');
+CREATE TYPE transaction_status_enum AS ENUM ('successful', 'mid-successful', 'unsuccessful');
 CREATE TYPE transaction_type_enum AS ENUM ('bank', 'wallet');
 CREATE TYPE cooling_enum AS ENUM ('liquid', 'air');
 
@@ -138,48 +138,48 @@ CREATE TABLE compatible_cc_socket (
     cpu_id          INT NOT NULL, 
     cooler_id       INT NOT NULL,
     PRIMARY KEY     (cpu_id, cooler_id), 
-    FOREIGN KEY     (cooler_id) REFERENCES product_cooler (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (cpu_id)    REFERENCES product_cpu (product_id)    ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (cooler_id) REFERENCES cooler (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (cpu_id)    REFERENCES cpu (product_id)    ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_rm_slot (
     ram_id          INT NOT NULL, 
     motherboard_id  INT NOT NULL, 
     PRIMARY KEY     (ram_id, motherboard_id),
-    FOREIGN KEY     (motherboard_id) REFERENCES product_motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (ram_id)         REFERENCES product_ram_stick (product_id)   ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (ram_id)         REFERENCES ram_stick (product_id)   ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_gp_connector (
     gpu_id          INT NOT NULL, 
     power_supply_id INT NOT NULL, 
     PRIMARY KEY     (gpu_id, power_supply_id),
-    FOREIGN KEY     (gpu_id)          REFERENCES product_gpu (product_id)          ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (power_supply_id) REFERENCES product_power_supply (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (gpu_id)          REFERENCES gpu (product_id)          ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (power_supply_id) REFERENCES power_supply (product_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_gm_slot (
     gpu_id          INT NOT NULL, 
     motherboard_id  INT NOT NULL,
     PRIMARY KEY     (gpu_id, motherboard_id), 
-    FOREIGN KEY     (motherboard_id) REFERENCES product_motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (gpu_id)         REFERENCES product_gpu (product_id)         ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (gpu_id)         REFERENCES gpu (product_id)         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_mc_socket (
     cpu_id          INT NOT NULL, 
     motherboard_id  INT NOT NULL, 
     PRIMARY KEY     (cpu_id, motherboard_id), 
-    FOREIGN KEY     (motherboard_id) REFERENCES product_motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (cpu_id)         REFERENCES product_cpu (product_id)         ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (cpu_id)         REFERENCES cpu (product_id)         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_sm_slot (
     ssd_id          INT NOT NULL, 
     motherboard_id  INT NOT NULL,
     PRIMARY KEY     (ssd_id, motherboard_id), 
-    FOREIGN KEY     (motherboard_id) REFERENCES product_motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (ssd_id)         REFERENCES product_ssd (product_id)         ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (ssd_id)         REFERENCES ssd (product_id)         ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE client (
@@ -216,8 +216,8 @@ CREATE TABLE address_of_client (
 
 CREATE TABLE discount_code (
     code            SERIAL PRIMARY KEY, 
-    amount          DECIMAL(12, 2) CHECK (amount > 0),
-    discount_limit  DECIMAL(12, 2) CHECK (discount_limit > 0),
+    amount          DECIMAL(12, 2)     CHECK (amount > 0),
+    discount_limit  DECIMAL(12, 2)     CHECK (discount_limit > 0),
     usage_limit     SMALLINT DEFAULT 1 CHECK (usage_limit >= 0) , 
     expiration_time TIMESTAMP,
     code_type       discount_enum NOT NULL
@@ -743,7 +743,7 @@ BEGIN
         JOIN added_to adt    ON info.client_id = adt.client_id 
         AND info.cart_number   = adt.cart_number 
         AND info.locked_number = adt.locked_number
-        WHERE t.transaction_status = 'Successful'
+        WHERE t.transaction_status = 'successful'
             AND   t.time_stamp >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
             AND   t.time_stamp < DATE_TRUNC('month', CURRENT_DATE)
         GROUP BY c.client_id

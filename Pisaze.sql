@@ -19,6 +19,7 @@ CREATE TYPE transaction_status_enum AS ENUM ('Successful', 'mid-successful', 'un
 CREATE TYPE transaction_type_enum AS ENUM ('bank', 'wallet');
 CREATE TYPE cooling_enum AS ENUM ('liquid', 'air');
 
+--Tables Section
 
 CREATE TABLE product (
     id                  SERIAL PRIMARY KEY, 
@@ -122,15 +123,15 @@ CREATE TABLE ssd (
 );
 
 CREATE TABLE gpu (
-    product_id          INT PRIMARY KEY, 
-    ram_size            INT,         
-    clock_speed         DECIMAL(5, 2), 
-    num_fans            SMALLINT,
-    wattage             INT,
-    depth               DECIMAL(5, 2), 
-    height              DECIMAL(5, 2),    
-    width               DECIMAL(5, 2),
-    FOREIGN KEY         (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
+    product_id           INT PRIMARY KEY, 
+    ram_size             INT,         
+    clock_speed          DECIMAL(5, 2), 
+    num_fans             SMALLINT,
+    wattage              INT,
+    depth                DECIMAL(5, 2), 
+    height               DECIMAL(5, 2),    
+    width                DECIMAL(5, 2),
+    FOREIGN KEY          (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_cc_socket (
@@ -157,20 +158,20 @@ CREATE TABLE compatible_gp_connector (
     FOREIGN KEY     (power_supply_id) REFERENCES product_power_supply (product_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
-CREATE TABLE compatible_mc_socket (
-    cpu_id          INT NOT NULL, 
-    motherboard_id  INT NOT NULL, 
-    PRIMARY KEY     (cpu_id, motherboard_id), 
-    FOREIGN KEY     (motherboard_id) REFERENCES product_motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY     (cpu_id) REFERENCES product_cpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
-);
-
 CREATE TABLE compatible_gm_slot (
     gpu_id          INT NOT NULL, 
     motherboard_id  INT NOT NULL,
     PRIMARY KEY     (gpu_id, motherboard_id), 
     FOREIGN KEY     (motherboard_id) REFERENCES product_motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY     (gpu_id) REFERENCES product_gpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE TABLE compatible_mc_socket (
+    cpu_id          INT NOT NULL, 
+    motherboard_id  INT NOT NULL, 
+    PRIMARY KEY     (cpu_id, motherboard_id), 
+    FOREIGN KEY     (motherboard_id) REFERENCES product_motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (cpu_id) REFERENCES product_cpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_sm_slot (
@@ -626,15 +627,15 @@ BEGIN
         INTO total_amount
         FROM added_to a
         WHERE a.client_id = NEW.client_id
-          AND a.cart_number = NEW.cart_number
-          AND a.locked_number = NEW.locked_number;
+            AND a.cart_number = NEW.cart_number
+            AND a.locked_number = NEW.locked_number;
 
         SELECT a.code
         INTO discount_code
         FROM applied_to a 
         WHERE a.client_id = NEW.client_id
-          AND a.cart_number = NEW.cart_number
-          AND a.locked_number = NEW.locked_number;
+            AND a.cart_number = NEW.cart_number
+            AND a.locked_number = NEW.locked_number;
 
         IF discount_code IS NOT NULL THEN
             SELECT amount, discount_limit
@@ -688,13 +689,13 @@ BEGIN
 
     IF is_vip_expired AND NEW.cart_number <> 1 THEN
         UPDATE shopping_cart
-        SET cart_status = 'blocked'
-        WHERE client_id = NEW.client_id
+        SET cart_status   = 'blocked'
+        WHERE client_id   = NEW.client_id
           AND cart_number = NEW.cart_number;
     ELSE
         UPDATE shopping_cart
-        SET cart_status = 'active'  
-        WHERE client_id = NEW.client_id
+        SET cart_status   = 'active'  
+        WHERE client_id   = NEW.client_id
           AND cart_number = NEW.cart_number;
     END IF;
 
@@ -708,7 +709,7 @@ FOR EACH ROW
 EXECUTE FUNCTION unlock_cart_after_payment();
 
 
-CREATE OR REPLACE FUNCTION convert_to_vip()
+CREATE OR REPLACE FUNCTION vip_changer()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO vip_client(client_id, expiration_time)
@@ -720,10 +721,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER convert_vip_after_sub_trigger
+CREATE TRIGGER vip_trigger
 AFTER INSERT ON subscribes 
 FOR EACH ROW
-EXECUTE FUNCTION convert_to_vip();
+EXECUTE FUNCTION vip_changer();
 
 
 --Job Scheduler
@@ -736,22 +737,22 @@ DECLARE
 BEGIN
     FOR vip_client_record IN 
         SELECT c.client_id, COALESCE(SUM(adt.cart_price), 0) * 0.15 AS total_cashback
-        FROM vip_client vc 
-        JOIN issued_for ifo ON vc.client_id = ifo.client_id
-        JOIN transaction t  ON ifo.tracking_code = t.tracking_code
-        JOIN added_to adt   ON ifo.client_id = adt.client_id 
-            AND ifo.cart_number = adt.cart_number 
-            AND ifo.locked_number = adt.locked_number
+        FROM vip_client vp 
+        JOIN issued_for info ON vp.client_id = info.client_id
+        JOIN transaction t   ON info.tracking_code = t.tracking_code
+        JOIN added_to adt    ON info.client_id = adt.client_id 
+        AND info.cart_number   = adt.cart_number 
+        AND info.locked_number = adt.locked_number
         WHERE t.transaction_status = 'Successful'
-        AND t.time_stamp >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
-        AND t.time_stamp < DATE_TRUNC('month', CURRENT_DATE)
+            AND   t.time_stamp >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
+            AND   t.time_stamp < DATE_TRUNC('month', CURRENT_DATE)
         GROUP BY c.client_id
     LOOP
         cashback_amount := vip_client_record.total_cashback;
 
         UPDATE client
         SET wallet_balance = wallet_balance + cashback_amount
-        WHERE client_id = vip_client_record.client_id;
+        WHERE client_id    = vip_client_record.client_id;
     END LOOP;
 END;
 $$ LANGUAGE plpgsql;
@@ -785,14 +786,14 @@ BEGIN
         END LOOP;
 
         UPDATE shopping_cart
-        SET cart_status = 'blocked'
+        SET cart_status   = 'blocked'
         WHERE cart_number = locked_cart_expired.cart_number
-          AND client_id = locked_cart_expired.client_id;
+          AND client_id   = locked_cart_expired.client_id;
         
         UPDATE locked_shopping_cart
-        SET time_stamp = NOW() + INTERVAL '7 days'
-        WHERE cart_number = locked_cart_expired.cart_number
-          AND client_id = locked_cart_expired.client_id
+        SET time_stamp      = NOW() + INTERVAL '7 days'
+        WHERE cart_number   = locked_cart_expired.cart_number
+          AND client_id     = locked_cart_expired.client_id
           AND locked_number = locked_cart_expired.locked_number;
 
     END LOOP;
@@ -800,8 +801,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Runs daily at midnight
 SELECT cron.schedule(
-    '0 0 * * *', -- Runs daily at midnight
+    '0 0 * * *',
     'SELECT check_order();'
 );
 

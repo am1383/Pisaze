@@ -6,6 +6,10 @@ CREATE DATABASE pisaze;
 
 \c pisaze
 
+--Extension for job scheduled
+
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
 --Enums Section--
 
 CREATE TYPE transaction_enum AS ENUM ('successful', 'mid-successful', 'unsuccessful');
@@ -69,7 +73,7 @@ CREATE TABLE cooler (
     depth                   DECIMAL(5, 2), 
     height                  DECIMAL(5, 2),    
     width                   DECIMAL(5, 2),    
-    FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY             (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE motherboard (
@@ -81,7 +85,7 @@ CREATE TABLE motherboard (
     depth               DECIMAL(5, 2), 
     height              DECIMAL(5, 2),    
     width               DECIMAL(5, 2),
-    FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY         (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE cpu (
@@ -94,7 +98,7 @@ CREATE TABLE cpu (
     boost_frequency     DECIMAL(5, 2),
     max_memory_limit    INT,         
     wattage             INT,                
-    FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY         (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE "case" (
@@ -108,6 +112,13 @@ CREATE TABLE "case" (
     depth           DECIMAL(5, 2), 
     height          DECIMAL(5, 2),    
     width           DECIMAL(5, 2),
+    FOREIGN KEY     (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
+); 
+
+CREATE TABLE ssd (
+    product_id  SERIAL PRIMARY KEY, 
+    capacity    DECIMAL(5, 2), 
+    wattage     INT,
     FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
@@ -117,14 +128,7 @@ CREATE TABLE power_supply (
     depth               DECIMAL(5, 2), 
     height              DECIMAL(5, 2),    
     width               DECIMAL(5, 2),
-    FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
-);
-
-CREATE TABLE ssd (
-    product_id  SERIAL PRIMARY KEY, 
-    capacity    DECIMAL(5, 2), 
-    wattage     INT,
-    FOREIGN KEY (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY         (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 --Create Compatible Tables--
@@ -132,8 +136,8 @@ CREATE TABLE ssd (
 CREATE TABLE compatible_mc_socket (
     cpu_id          INT NOT NULL, 
     motherboard_id  INT NOT NULL, 
-    FOREIGN KEY (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (cpu_id) REFERENCES cpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY     (motherboard_id) REFERENCES motherboard (product_id) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY     (cpu_id) REFERENCES cpu (product_id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE compatible_cc_socket (
@@ -445,6 +449,7 @@ BEGIN
         RAISE EXCEPTION 'This Discount Code Is No Longer Available';
     END IF;
     RETURN NEW;
+
 END;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER check_expiration_limit_discount_trigger
@@ -467,6 +472,7 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
 CREATE TRIGGER added_to_blocked_cart_trigger
 BEFORE INSERT OR UPDATE ON added_to
 FOR EACH ROW

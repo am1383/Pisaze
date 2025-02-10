@@ -13,11 +13,11 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 
 --ENUM Section
 
-CREATE TYPE cart_enum AS ENUM ('locked', 'blocked', 'active');
-CREATE TYPE discount_enum AS ENUM ('public', 'private');
+CREATE TYPE cart_enum AS ENUM ('active', 'blocked', 'locked');
+CREATE TYPE discount_enum AS ENUM ('private', 'public');
 CREATE TYPE transaction_status_enum AS ENUM ('successful', 'mid-successful', 'unsuccessful');
-CREATE TYPE transaction_type_enum AS ENUM ('bank', 'wallet');
-CREATE TYPE cooling_enum AS ENUM ('liquid', 'air');
+CREATE TYPE transaction_type_enum AS ENUM ('wallet', 'bank');
+CREATE TYPE cooling_enum AS ENUM ('air', 'liquid');
 
 --Table Section
 
@@ -802,7 +802,7 @@ SELECT cron.schedule(
     'SELECT monthly_cashchecker();'
 );
 
---Schedule For Run Daily
+--Schedule for run daily
 SELECT cron.schedule(
     '0 0 * * *',
     'SELECT subscription_end();'

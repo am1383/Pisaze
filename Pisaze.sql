@@ -19,7 +19,7 @@ CREATE TYPE transaction_status_enum AS ENUM ('successful', 'mid-successful', 'un
 CREATE TYPE transaction_type_enum AS ENUM ('bank', 'wallet');
 CREATE TYPE cooling_enum AS ENUM ('liquid', 'air');
 
---Tables Section
+--Table Section
 
 CREATE TABLE product (
     id                  SERIAL PRIMARY KEY, 
@@ -306,7 +306,7 @@ CREATE TABLE applied_to (
     FOREIGN KEY     (client_id, cart_number, locked_number) REFERENCES locked_shopping_cart (client_id, cart_number, locked_number) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
---Triggers Section
+--Function Section
 
 CREATE OR REPLACE FUNCTION ref_handler() 
 RETURNS TRIGGER AS $$
@@ -371,11 +371,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER referral_trigger
-AFTER INSERT ON refers
-FOR EACH ROW
-EXECUTE FUNCTION ref_handler();
-
 
 CREATE OR REPLACE FUNCTION blocked_cart()
 RETURNS TRIGGER AS $$
@@ -396,21 +391,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER applied_to_blocked_cart_trigger
-BEFORE INSERT OR UPDATE ON applied_to
-FOR EACH ROW
-EXECUTE FUNCTION blocked_cart();
-
-CREATE TRIGGER issued_for_blocked_cart_trigger
-BEFORE INSERT OR UPDATE ON issued_for
-FOR EACH ROW
-EXECUTE FUNCTION blocked_cart();
-
-CREATE TRIGGER adding_blocked_cart_trigger
-BEFORE INSERT OR UPDATE ON added_to
-FOR EACH ROW
-EXECUTE FUNCTION blocked_cart();
-
 
 CREATE OR REPLACE FUNCTION product_stock()
 RETURNS TRIGGER AS $$
@@ -430,11 +410,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER out_of_stock_trigger
-BEFORE INSERT OR UPDATE ON added_to
-FOR EACH ROW
-EXECUTE FUNCTION product_stock();
-
 
 CREATE OR REPLACE FUNCTION stock_after_add_to_cart()
 RETURNS TRIGGER AS $$
@@ -446,11 +421,6 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
-CREATE TRIGGER reduce_stock_trigger
-AFTER INSERT ON added_to
-FOR EACH ROW
-EXECUTE FUNCTION stock_after_add_to_cart();
 
 
 CREATE OR REPLACE FUNCTION cart_limit()
@@ -496,11 +466,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER cart_limit_trigger
-BEFORE INSERT OR UPDATE ON shopping_cart
-FOR EACH ROW
-EXECUTE FUNCTION cart_limit();
-
 
 CREATE OR REPLACE FUNCTION append_discount()
 RETURNS TRIGGER AS $$
@@ -535,12 +500,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER expiration_limit_discount_trigger
-BEFORE INSERT ON applied_to
-FOR EACH ROW
-EXECUTE FUNCTION append_discount();
-
-
 CREATE OR REPLACE FUNCTION deposit_amount()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -556,11 +515,6 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
-CREATE TRIGGER deposit_into_wallet_trigger
-AFTER INSERT ON deposit_wallet
-FOR EACH ROW
-EXECUTE FUNCTION deposit_amount();
 
 
 CREATE OR REPLACE FUNCTION reduce_wallet_subscribes()
@@ -595,11 +549,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER reduce_user_wallet_trigger
-AFTER INSERT ON subscribes
-FOR EACH ROW
-EXECUTE FUNCTION reduce_wallet_subscribes();
-
 
 CREATE OR REPLACE FUNCTION reduce_wallet_subscribes()
 RETURNS TRIGGER AS $$
@@ -613,49 +562,44 @@ DECLARE
 BEGIN
     SELECT t.transaction_type
     INTO transaction_type_val
-    FROM transaction AS t
+    FROM transaction t
     WHERE t.tracking_code = NEW.tracking_code;
 
     IF transaction_type_val = 'wallet' THEN
 
         SELECT c.wallet_balance
         INTO current_balance
-        FROM client AS c
+        FROM client c
         WHERE c.client_id = NEW.client_id;
 
-        SELECT COALESCE(SUM(at.cart_price), 0) 
+        SELECT COALESCE(SUM(a.cart_price), 0) 
         INTO total_amount
-        FROM added_to AS at
-        WHERE at.client_id = NEW.client_id
-            AND at.cart_number = NEW.cart_number
-            AND at.locked_number = NEW.locked_number;
+        FROM added_to a
+        WHERE a.client_id = NEW.client_id
+          AND a.cart_number = NEW.cart_number
+          AND a.locked_number = NEW.locked_number;
 
-        SELECT at.code
-        INTO discount_code
-        FROM applied_to a 
-        WHERE at.client_id = NEW.client_id
-            AND at.cart_number = NEW.cart_number
-            AND at.locked_number = NEW.locked_number;
-
-        IF discount_code IS NOT NULL THEN
-            SELECT amount, discount_limit
-            INTO discount_amount, limit_value
-            FROM discount_code
-            WHERE code = discount_code;
-
+        FOR discount_code, discount_amount, limit_value IN 
+            SELECT a.code, d.amount, d.discount_limit
+            FROM applied_to a
+            JOIN discount_code d ON a.code = d.code
+            WHERE a.client_id = NEW.client_id
+              AND a.cart_number = NEW.cart_number
+              AND a.locked_number = NEW.locked_number
+        LOOP
             IF discount_amount <= 1 THEN  
                 IF (total_amount * discount_amount) > limit_value THEN
-                    total_amount := total_amount - limit_value; 
+                    total_amount := total_amount - limit_value;  
                 ELSE
-                    total_amount := total_amount - (total_amount * discount_amount);
+                    total_amount := total_amount - (total_amount * discount_amount); 
                 END IF;
             ELSE  
                 total_amount := total_amount - discount_amount;
             END IF; 
+        END LOOP;
 
-            IF total_amount < 0 THEN
-                total_amount := 0;
-            END IF;
+        IF total_amount < 0 THEN
+            total_amount := 0;
         END IF;
 
         IF current_balance >= total_amount THEN
@@ -670,11 +614,6 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
-CREATE TRIGGER reduce_user_wallet_order_trigger
-AFTER INSERT ON issued_for
-FOR EACH ROW
-EXECUTE FUNCTION reduce_wallet_subscribes();
 
 
 CREATE OR REPLACE FUNCTION unlock_cart_after_payment()
@@ -703,11 +642,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER unlock_cart_trigger
-AFTER INSERT ON issued_for
-FOR EACH ROW
-EXECUTE FUNCTION unlock_cart_after_payment();
-
 
 CREATE OR REPLACE FUNCTION vip_changer()
 RETURNS TRIGGER AS $$
@@ -721,11 +655,72 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+--Triggers
+
 CREATE TRIGGER vip_trigger
 AFTER INSERT ON subscribes 
 FOR EACH ROW
 EXECUTE FUNCTION vip_changer();
 
+CREATE TRIGGER reduce_stock_trigger
+AFTER INSERT ON added_to
+FOR EACH ROW
+EXECUTE FUNCTION stock_after_add_to_cart();
+
+CREATE TRIGGER cart_limit_trigger
+BEFORE INSERT OR UPDATE ON shopping_cart
+FOR EACH ROW
+EXECUTE FUNCTION cart_limit();
+
+CREATE TRIGGER expiration_limit_discount_trigger
+BEFORE INSERT ON applied_to
+FOR EACH ROW
+EXECUTE FUNCTION append_discount();
+
+CREATE TRIGGER unlock_cart_trigger
+AFTER INSERT ON issued_for
+FOR EACH ROW
+EXECUTE FUNCTION unlock_cart_after_payment();
+
+CREATE TRIGGER reduce_user_wallet_order_trigger
+AFTER INSERT ON issued_for
+FOR EACH ROW
+EXECUTE FUNCTION reduce_wallet_subscribes();
+
+CREATE TRIGGER reduce_user_wallet_trigger
+AFTER INSERT ON subscribes
+FOR EACH ROW
+EXECUTE FUNCTION reduce_wallet_subscribes();
+
+CREATE TRIGGER deposit_into_wallet_trigger
+AFTER INSERT ON deposit_wallet
+FOR EACH ROW
+EXECUTE FUNCTION deposit_amount();
+
+CREATE TRIGGER applied_to_blocked_cart_trigger
+BEFORE INSERT OR UPDATE ON applied_to
+FOR EACH ROW
+EXECUTE FUNCTION blocked_cart();
+
+CREATE TRIGGER issued_for_blocked_cart_trigger
+BEFORE INSERT OR UPDATE ON issued_for
+FOR EACH ROW
+EXECUTE FUNCTION blocked_cart();
+
+CREATE TRIGGER adding_blocked_cart_trigger
+BEFORE INSERT OR UPDATE ON added_to
+FOR EACH ROW
+EXECUTE FUNCTION blocked_cart();
+
+CREATE TRIGGER referral_trigger
+AFTER INSERT ON refers
+FOR EACH ROW
+EXECUTE FUNCTION ref_handler();
+
+CREATE TRIGGER out_of_stock_trigger
+BEFORE INSERT OR UPDATE ON added_to
+FOR EACH ROW
+EXECUTE FUNCTION product_stock();
 
 --Job Scheduler
 

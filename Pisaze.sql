@@ -25,18 +25,18 @@ CREATE TABLE product (
     id                  SERIAL PRIMARY KEY, 
     brand               VARCHAR(50) NOT NULL,
     model               VARCHAR(50) NOT NULL,
+    category            VARCHAR(50),
     current_price       INT,
     stock_count         SMALLINT,
-    category            VARCHAR(50),
     image               BYTEA
 );
 
 CREATE TABLE motherboard (
     product_id          INT PRIMARY KEY, 
+    wattage             INT,
     chipset_name        VARCHAR(50),
     num_memory_slots    SMALLINT,
     memory_speed_range  DECIMAL(5, 2),
-    wattage             INT,
     depth               DECIMAL(5, 2), 
     height              DECIMAL(5, 2),    
     width               DECIMAL(5, 2),
@@ -45,9 +45,9 @@ CREATE TABLE motherboard (
 
 CREATE TABLE hdd (
     product_id          INT PRIMARY KEY, 
-    capacity            DECIMAL(5, 2),          
     rotational_speed    INT,  
-    wattage             INT,           
+    wattage             INT,      
+    capacity            DECIMAL(5, 2),             
     depth               DECIMAL(5, 2), 
     height              DECIMAL(5, 2),    
     width               DECIMAL(5, 2),
@@ -68,26 +68,26 @@ CREATE TABLE cooler (
 
 CREATE TABLE cpu (
     product_id           INT PRIMARY KEY, 
+    max_memory_limit     INT,         
+    wattage              INT,   
     generation           VARCHAR(50),
     microarchitecture    VARCHAR(50),
     num_cores            SMALLINT,
     num_threads          SMALLINT,
     base_frequency       DECIMAL(5, 2), 
-    boost_frequency      DECIMAL(5, 2),
-    max_memory_limit     INT,         
-    wattage              INT,                
+    boost_frequency      DECIMAL(5, 2),             
     FOREIGN KEY          (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 
 CREATE TABLE "case" (
     product_id           INT PRIMARY KEY, 
+    fan_size             INT,         
+    wattage              INT,
+    num_fans             SMALLINT,
     type                 VARCHAR(50),
     color                VARCHAR(50),
     material             VARCHAR(50),
-    fan_size             INT,         
-    num_fans             SMALLINT,
-    wattage              INT,
     depth                DECIMAL(5, 2), 
     height               DECIMAL(5, 2),    
     width                DECIMAL(5, 2),
@@ -96,10 +96,10 @@ CREATE TABLE "case" (
 
 CREATE TABLE ram_stick (
     product_id           INT PRIMARY KEY, 
+    wattage              INT, 
     generation           VARCHAR(191),
     capacity             DECIMAL(5, 2),    
     frequency            DECIMAL(5, 2),   
-    wattage              INT, 
     depth                DECIMAL(5, 2), 
     height               DECIMAL(5, 2),    
     width                DECIMAL(5, 2),   
@@ -117,17 +117,17 @@ CREATE TABLE power_supply (
 
 CREATE TABLE ssd (
     product_id           INT PRIMARY KEY, 
-    capacity             DECIMAL(5, 2), 
     wattage              INT,
+    capacity             DECIMAL(5, 2), 
     FOREIGN KEY          (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 CREATE TABLE gpu (
     product_id           INT PRIMARY KEY, 
     ram_size             INT,         
-    clock_speed          DECIMAL(5, 2), 
-    num_fans             SMALLINT,
     wattage              INT,
+    num_fans             SMALLINT,
+    clock_speed          DECIMAL(5, 2), 
     depth                DECIMAL(5, 2), 
     height               DECIMAL(5, 2),    
     width                DECIMAL(5, 2),
@@ -187,9 +187,9 @@ CREATE TABLE client (
     phone_number    VARCHAR(15) NOT NULL UNIQUE,
     first_name      VARCHAR(50) NOT NULL,
     last_name       VARCHAR(50) NOT NULL,
+    referral_code   VARCHAR(20) NOT NULL UNIQUE,
     wallet_balance  DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
     time_stamp      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    referral_code   VARCHAR(20) NOT NULL UNIQUE
 );
 
 CREATE TABLE vip_client (
@@ -371,7 +371,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
 CREATE OR REPLACE FUNCTION blocked_cart()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -391,6 +390,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION stock_after_add_to_cart()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE product
+    SET stock_count = stock_count - NEW.quantity
+    WHERE id = NEW.product_id;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION product_stock()
 RETURNS TRIGGER AS $$
@@ -409,19 +418,6 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
-
-CREATE OR REPLACE FUNCTION stock_after_add_to_cart()
-RETURNS TRIGGER AS $$
-BEGIN
-    UPDATE product
-    SET stock_count = stock_count - NEW.quantity
-    WHERE id = NEW.product_id;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
 
 CREATE OR REPLACE FUNCTION cart_limit()
 RETURNS TRIGGER AS $$
@@ -465,7 +461,6 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 
 CREATE OR REPLACE FUNCTION append_discount()
 RETURNS TRIGGER AS $$
@@ -549,7 +544,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
 CREATE OR REPLACE FUNCTION reduce_wallet_subscribes()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -615,6 +609,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION vip_changer()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO vip_client(client_id, expiration_time)
+    VALUES (NEW.client_id, NOW() + INTERVAL '1 month')
+    ON CONFLICT (client_id) 
+    DO UPDATE SET expiration_time = NOW() + INTERVAL '1 month'; 
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION unlock_cart_after_payment()
 RETURNS TRIGGER AS $$
@@ -642,16 +647,83 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
-CREATE OR REPLACE FUNCTION vip_changer()
-RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION check_order()
+RETURNS VOID AS $$
+DECLARE 
+    locked_cart_expired RECORD;
+    product_rec RECORD;
 BEGIN
-    INSERT INTO vip_client(client_id, expiration_time)
-    VALUES (NEW.client_id, NOW() + INTERVAL '1 month')
-    ON CONFLICT (client_id) 
-    DO UPDATE SET expiration_time = NOW() + INTERVAL '1 month'; 
+    FOR locked_cart_expired IN 
+        SELECT *
+        FROM locked_shopping_cart NATURAL JOIN shopping_cart 
+        WHERE cart_status = 'locked' 
+          AND (NOW() - time_stamp) > INTERVAL '3 day'
+    LOOP
+        FOR product_rec IN 
+            SELECT product_id, quantity
+            FROM locked_cart_expired NATURAL JOIN added_to
+        LOOP
+            UPDATE product 
+            SET stock_count = stock_count + product_rec.quantity
+            WHERE id = product_rec.product_id;
+        END LOOP;
 
-    RETURN NEW;
+        UPDATE shopping_cart
+        SET cart_status   = 'blocked'
+        WHERE cart_number = locked_cart_expired.cart_number
+          AND client_id   = locked_cart_expired.client_id;
+        
+        UPDATE locked_shopping_cart
+        SET time_stamp      = NOW() + INTERVAL '7 days'
+        WHERE cart_number   = locked_cart_expired.cart_number
+          AND client_id     = locked_cart_expired.client_id
+          AND locked_number = locked_cart_expired.locked_number;
+
+    END LOOP;
+
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION monthly_cashchecker()
+RETURNS VOID AS $$
+DECLARE
+    vip_client_record RECORD;
+    cashback_amount DECIMAL(12, 2);
+BEGIN
+    FOR vip_client_record IN 
+        SELECT c.client_id, COALESCE(SUM(adt.cart_price), 0) * 0.15 AS total_cashback
+        FROM vip_client vp 
+        JOIN issued_for info ON vp.client_id = info.client_id
+        JOIN transaction t   ON info.tracking_code = t.tracking_code
+        JOIN added_to adt    ON info.client_id = adt.client_id 
+        AND info.cart_number   = adt.cart_number 
+        AND info.locked_number = adt.locked_number
+        WHERE t.transaction_status = 'successful'
+            AND   t.time_stamp >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
+            AND   t.time_stamp < DATE_TRUNC('month', CURRENT_DATE)
+        GROUP BY c.client_id
+    LOOP
+        cashback_amount := vip_client_record.total_cashback;
+
+        UPDATE client
+        SET wallet_balance = wallet_balance + cashback_amount
+        WHERE client_id    = vip_client_record.client_id;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION subscription_end()
+RETURNS VOID AS $$
+DECLARE
+    vip_rec RECORD;
+BEGIN
+    UPDATE shopping_cart
+    SET cart_status = 'blocked'
+    WHERE client_id IN (
+        SELECT client_id FROM vip_client WHERE expiration_time < NOW()
+    )
+    AND cart_number > 1
+    AND cart_status <> 'locked';
 END;
 $$ LANGUAGE plpgsql;
 
@@ -724,102 +796,20 @@ EXECUTE FUNCTION product_stock();
 
 --Job Scheduler
 
-CREATE OR REPLACE FUNCTION monthly_cashback()
-RETURNS VOID AS $$
-DECLARE
-    vip_client_record RECORD;
-    cashback_amount DECIMAL(12, 2);
-BEGIN
-    FOR vip_client_record IN 
-        SELECT c.client_id, COALESCE(SUM(adt.cart_price), 0) * 0.15 AS total_cashback
-        FROM vip_client vp 
-        JOIN issued_for info ON vp.client_id = info.client_id
-        JOIN transaction t   ON info.tracking_code = t.tracking_code
-        JOIN added_to adt    ON info.client_id = adt.client_id 
-        AND info.cart_number   = adt.cart_number 
-        AND info.locked_number = adt.locked_number
-        WHERE t.transaction_status = 'successful'
-            AND   t.time_stamp >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
-            AND   t.time_stamp < DATE_TRUNC('month', CURRENT_DATE)
-        GROUP BY c.client_id
-    LOOP
-        cashback_amount := vip_client_record.total_cashback;
-
-        UPDATE client
-        SET wallet_balance = wallet_balance + cashback_amount
-        WHERE client_id    = vip_client_record.client_id;
-    END LOOP;
-END;
-$$ LANGUAGE plpgsql;
-
--- Schedule for midnight on the 1st of the month
+--Schedule for midnight on the 1st of the month
 SELECT cron.schedule(
     '0 0 1 * *', 
-    'SELECT monthly_cashback();'
+    'SELECT monthly_cashchecker();'
 );
-
-
-CREATE OR REPLACE FUNCTION check_order()
-RETURNS VOID AS $$
-DECLARE 
-    locked_cart_expired RECORD;
-    product_rec RECORD;
-BEGIN
-    FOR locked_cart_expired IN 
-        SELECT *
-        FROM locked_shopping_cart NATURAL JOIN shopping_cart 
-        WHERE cart_status = 'locked' 
-          AND (NOW() - time_stamp) > INTERVAL '3 day'
-    LOOP
-        FOR product_rec IN 
-            SELECT product_id, quantity
-            FROM locked_cart_expired NATURAL JOIN added_to
-        LOOP
-            UPDATE product 
-            SET stock_count = stock_count + product_rec.quantity
-            WHERE id = product_rec.product_id;
-        END LOOP;
-
-        UPDATE shopping_cart
-        SET cart_status   = 'blocked'
-        WHERE cart_number = locked_cart_expired.cart_number
-          AND client_id   = locked_cart_expired.client_id;
-        
-        UPDATE locked_shopping_cart
-        SET time_stamp      = NOW() + INTERVAL '7 days'
-        WHERE cart_number   = locked_cart_expired.cart_number
-          AND client_id     = locked_cart_expired.client_id
-          AND locked_number = locked_cart_expired.locked_number;
-
-    END LOOP;
-
-END;
-$$ LANGUAGE plpgsql;
-
--- Runs daily at midnight
-SELECT cron.schedule(
-    '0 0 * * *',
-    'SELECT check_order();'
-);
-
-
-CREATE OR REPLACE FUNCTION subscription_end()
-RETURNS VOID AS $$
-DECLARE
-    vip_rec RECORD;
-BEGIN
-    UPDATE shopping_cart
-    SET cart_status = 'blocked'
-    WHERE client_id IN (
-        SELECT client_id FROM vip_client WHERE expiration_time < NOW()
-    )
-    AND cart_number > 1
-    AND cart_status <> 'locked';
-END;
-$$ LANGUAGE plpgsql;
 
 --Schedule For Run Daily
 SELECT cron.schedule(
     '0 0 * * *',
     'SELECT subscription_end();'
+);
+
+--Runs daily at midnight
+SELECT cron.schedule(
+    '0 0 * * *',
+    'SELECT check_order();'
 );

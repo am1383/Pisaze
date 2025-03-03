@@ -1,5 +1,7 @@
 --PiSaze Database Final Project--
 
+--Bar Asas ER TA
+
 --Create & Connect to the database
 
 CREATE DATABASE pisaze;
@@ -468,7 +470,7 @@ DECLARE
     code_record RECORD := NULL;
     usage INT;
 BEGIN
-    SELECT dc.usage_count, dc.usage_limit, dc.expiration_time
+    SELECT dc.usage_limit, dc.expiration_time
     INTO code_record
     FROM discount_code AS dc
     WHERE dc.code = NEW.code;

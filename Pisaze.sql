@@ -470,27 +470,27 @@ DECLARE
     code_record RECORD := NULL;
     usage INT;
 BEGIN
-    SELECT dc.usage_limit, dc.expiration_time
+    SELECT d.usage_limit, d.expiration_time
     INTO code_record
-    FROM discount_code AS dc
-    WHERE dc.code = NEW.code;
+    FROM discount_code d
+    WHERE d.code = NEW.discount_code;
 
     IF code_record IS NULL THEN
-        RAISE EXCEPTION 'Invalid Code';
+        RAISE EXCEPTION 'Invalid Code.';
     END IF;
 
-    SELECT COUNT(code)   
+    SELECT COUNT(discount_code)   
     INTO usage
     FROM applied_to
-    WHERE code = NEW.code
-    GROUP BY code;
+    WHERE discount_code = NEW.discount_code
+    GROUP BY discount_code;
 
     IF code_record.expiration_time < NOW() THEN
-        RAISE EXCEPTION 'This Code Has Been Expired';
+        RAISE EXCEPTION 'The Discount Code Has Been Expired.';
     END IF;
 
     IF usage >= code_record.usage_limit THEN
-        RAISE EXCEPTION 'This Code Is Not Longer Available';
+        RAISE EXCEPTION 'The Usage Limit Has Been Reached.';
     END IF;
 
     RETURN NEW;

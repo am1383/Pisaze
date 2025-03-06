@@ -15,11 +15,11 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 
 --ENUM Section
 
-CREATE TYPE cart_enum AS ENUM ('active', 'blocked', 'locked');
+CREATE TYPE cart_enum     AS ENUM ('active', 'blocked', 'locked');
 CREATE TYPE discount_enum AS ENUM ('private', 'public');
 CREATE TYPE transaction_status_enum AS ENUM ('successful', 'mid-successful', 'unsuccessful');
-CREATE TYPE transaction_type_enum AS ENUM ('wallet', 'bank');
-CREATE TYPE cooling_enum AS ENUM ('air', 'liquid');
+CREATE TYPE transaction_type_enum   AS ENUM ('wallet', 'bank');
+CREATE TYPE cooling_enum  AS ENUM ('air', 'liquid');
 
 --Table Section
 
@@ -102,8 +102,8 @@ CREATE TABLE ram_stick (
     generation           VARCHAR(191),
     capacity             DECIMAL(5, 2),    
     frequency            DECIMAL(5, 2),   
-    depth                DECIMAL(5, 2), 
     height               DECIMAL(5, 2),    
+    depth                DECIMAL(5, 2), 
     width                DECIMAL(5, 2),   
     FOREIGN KEY          (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
@@ -111,8 +111,8 @@ CREATE TABLE ram_stick (
 CREATE TABLE power_supply (
     product_id           INT PRIMARY KEY, 
     supported_wattage    INT,
-    depth                DECIMAL(5, 2), 
-    height               DECIMAL(5, 2),    
+    height               DECIMAL(5, 2), 
+    depth                DECIMAL(5, 2),    
     width                DECIMAL(5, 2),
     FOREIGN KEY          (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
 );
@@ -129,8 +129,8 @@ CREATE TABLE gpu (
     ram_size             INT,         
     wattage              INT,
     num_fans             SMALLINT,
-    clock_speed          DECIMAL(5, 2), 
     depth                DECIMAL(5, 2), 
+    clock_speed          DECIMAL(5, 2), 
     height               DECIMAL(5, 2),    
     width                DECIMAL(5, 2),
     FOREIGN KEY          (product_id) REFERENCES product (id) ON UPDATE CASCADE ON DELETE CASCADE
@@ -218,8 +218,8 @@ CREATE TABLE address_of_client (
 
 CREATE TABLE discount_code (
     code            SERIAL PRIMARY KEY, 
-    amount          DECIMAL(12, 2)     CHECK (amount > 0),
     discount_limit  DECIMAL(12, 2)     CHECK (discount_limit > 0),
+    amount          DECIMAL(12, 2)     CHECK (amount > 0),
     usage_limit     SMALLINT DEFAULT 1 CHECK (usage_limit >= 0) , 
     expiration_time TIMESTAMP,
     code_type       discount_enum      NOT NULL
@@ -513,7 +513,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
 CREATE OR REPLACE FUNCTION reduce_wallet_subscribes()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -550,10 +549,10 @@ CREATE OR REPLACE FUNCTION reduce_wallet_subscribes()
 RETURNS TRIGGER AS $$
 DECLARE
     transaction_type_val    transaction_type_enum; 
-    current_balance         DECIMAL(12, 2);       
+    current_balance         DECIMAL(12, 2);   
+    limit_value             DECIMAL(12, 2);            
     total_amount            DECIMAL(12, 2) := 0;   
     discount_amount         DECIMAL(12, 2) := 0;  
-    limit_value             DECIMAL(12, 2);        
     discount_code           INT;                   
 BEGIN
     SELECT t.transaction_type
@@ -579,9 +578,9 @@ BEGIN
             SELECT a.code, d.amount, d.discount_limit
             FROM applied_to a
             JOIN discount_code d ON a.code = d.code
-            WHERE a.client_id = NEW.client_id
-              AND a.cart_number = NEW.cart_number
-              AND a.locked_number = NEW.locked_number
+            WHERE a.client_id       = NEW.client_id
+              AND a.cart_number     = NEW.cart_number
+              AND a.locked_number   = NEW.locked_number
         LOOP
             IF discount_amount <= 1 THEN  
                 IF (total_amount * discount_amount) > limit_value THEN
